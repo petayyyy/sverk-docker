@@ -48,8 +48,8 @@ RUN apt-get update && apt-get install -y \
     nano \
     vim \
     mesa-utils \
-    # Для настройки обоев (xfdesktop4 уже установлен в xfce4)
     imagemagick \
+    desktop-file-utils \
     && rm -rf /var/lib/apt/lists/*
 
 ### PX4
@@ -107,16 +107,12 @@ USER user
 WORKDIR /home/user
 
 # Клонируем и собираем PX4 v1.16.0
-RUN git clone https://github.com/PX4/PX4-Autopilot.git --recursive
-
-# USER root
-RUN export USER=user && \
-    export HOME=/home/user && \ 
-    bash ./PX4-Autopilot/Tools/setup/ubuntu.sh
-# USER user
-
-RUN cd PX4-Autopilot && \
+RUN git clone https://github.com/PX4/PX4-Autopilot.git --recursive && \
+    cd PX4-Autopilot && \
     git checkout v1.16.0 && \
+    export USER=user && \
+    export HOME=/home/user && \ 
+    bash ./Tools/setup/ubuntu.sh && \
     git submodule sync --recursive && \
     git submodule update --init --recursive && \
     make px4_sitl -j$(nproc)
@@ -132,7 +128,7 @@ RUN git clone -b v2.4.3 https://github.com/eProsima/Micro-XRCE-DDS-Agent.git && 
 RUN mkdir -p /home/user/sverk_ws/src/ && \
     cd /home/user/sverk_ws/src/ && \
     git clone https://github.com/PX4/px4_msgs.git && \
-    git clone https://github.com/PX4/px4_ros_com.git
+    git clone https://github.com/PX4/px4_ros_com.git  
 
 # Инициализируем rosdep
 WORKDIR /home/user/sverk_ws
@@ -173,8 +169,8 @@ RUN wget https://raw.githubusercontent.com/mavlink/qgroundcontrol/master/resourc
     convert /home/user/qgroundcontrol.ico -resize 256x256 /home/user/qgroundcontrol/qgroundcontrol.png && \
     chown user:user /home/user/qgroundcontrol.*
 
-# Создаем ярлык для запуска
-RUN mkdir -p /home/user/.local/share/applications/ && \
+# Создаем ярлык для запуска НА РАБОЧЕМ СТОЛЕ (важное исправление)
+RUN mkdir -p /home/user/Desktop/ && \
     echo "[Desktop Entry]\n\
 Name=QGroundControl\n\
 Comment=Ground Control Station for Drones\n\
@@ -183,13 +179,14 @@ Icon=/home/user/qgroundcontrol/qgroundcontrol.png\n\
 Terminal=false\n\
 Type=Application\n\
 Categories=Utility;Application;\n\
-StartupWMClass=QGroundControl" > /home/user/.local/share/applications/qgroundcontrol.desktop && \
-    chown -R user:user /home/user/.local
+StartupWMClass=QGroundControl" > /home/user/Desktop/qgroundcontrol.desktop && \
+    chmod +x /home/user/Desktop/qgroundcontrol.desktop && \
+    chown user:user /home/user/Desktop/qgroundcontrol.desktop
 
-# Добавляем в автозагрузку (опционально)
-RUN mkdir -p /home/user/.config/autostart/ && \
-    cp /home/user/.local/share/applications/qgroundcontrol.desktop /home/user/.config/autostart/ && \
-    chown -R user:user /home/user/.config/autostart
+# Создаем ярлык для меню приложений (опционально)
+RUN mkdir -p /home/user/.local/share/applications/ && \
+    cp /home/user/Desktop/qgroundcontrol.desktop /home/user/.local/share/applications/ && \
+    chown user:user /home/user/.local/share/applications/qgroundcontrol.desktop
 
 ### DISPLAY
 # Возвращаемся к root для настройки сервисов
@@ -220,13 +217,16 @@ RUN mkdir -p /home/user/.config/xfce4/xfconf/xfce-perchannel-xml/ && \
         </property>\n\
         </property>\n\
     </property>\n\
-    </channel>' > /home/user/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml
+    </channel>' > /home/user/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml && \
+    chown -R user:user /home/user/.config
 
 # Создаем скрипт для запуска VNC и noVNC
 RUN echo '#!/bin/bash\n\
 # Запускаем виртуальный дисплей\n\
 Xvfb :99 -screen 0 1280x720x24 &\n\
 export DISPLAY=:99\n\
+# Ожидаем запуска X сервера\n\
+sleep 2\n\
 # Запускаем графическую среду Xfce\n\
 startxfce4 &\n\
 # Запускаем VNC-сервер\n\
@@ -238,26 +238,19 @@ echo "====================================="\n\
 echo "noVNC запущен! Для подключения откройте:"\n\
 echo "http://localhost:6080/vnc.html"\n\
 echo "====================================="\n\
-# Источним ROS 2\n\
-source /opt/ros/humble/setup.bash\n\
+# Источним ROS 2 для пользователя\n\
+su - user -c "source /opt/ros/humble/setup.bash && source /home/user/sverk_ws/install/local_setup.bash"\n\
 # Оставляем контейнер работающим\n\
-exec "$@"' > /start_vnc_novnc.sh && \
+tail -f /dev/null' > /start_vnc_novnc.sh && \
     chmod +x /start_vnc_novnc.sh
-
-# Настраиваем точку входа для ROS 2
-RUN echo '#!/bin/bash\n\
-source /opt/ros/humble/setup.bash\n\
-source /home/user/sverk_ws/install/local_setup.bash\n\
-
-exec "$@"' > /ros_entrypoint.sh && \
-    chmod +x /ros_entrypoint.sh
 
 # Добавляем пути в .bashrc пользователя
 RUN echo "source /opt/ros/humble/setup.bash" >> /home/user/.bashrc && \
     echo "source /home/user/sverk_ws/install/local_setup.bash" >> /home/user/.bashrc && \
-    echo 'export PATH=$PATH:/home/user/Micro-XRCE-DDS-Agent/build' >> /home/user/.bashrc
+    echo 'export PATH=$PATH:/home/user/Micro-XRCE-DDS-Agent/build' >> /home/user/.bashrc && \
+    echo 'export DISPLAY=:99' >> /home/user/.bashrc
 
-# Фиксим права доступа к файлам пользователя
+# Фиксим права доступа ко всем файлам пользователя
 RUN chown -R user:user /home/user/
 
 # Открываем порты для VNC и noVNC
@@ -267,15 +260,25 @@ EXPOSE 5900 6080
 ENV DISPLAY=:99
 
 COPY scripts/edit_rcS.bash /home/user/edit_rcS.bash
-RUN apt-get update && apt-get install -y dos2unix
-# После копирования скриптов
-RUN dos2unix /home/user/edit_rcS.bash && \
+RUN apt-get update && apt-get install -y dos2unix && \
+    dos2unix /home/user/edit_rcS.bash && \
     chmod +x /home/user/edit_rcS.bash && \
     chown user:user /home/user/edit_rcS.bash
 
-    # Переключаемся обратно на пользователя
-USER user
-WORKDIR /home/user
+RUN mkdir -p /home/user/Desktop/ && \
+    echo "[Desktop Entry]\n\
+Name=Remote QgroundControl\n\
+Comment=Configure Remote QGroundControl connection\n\
+Exec=xfce4-terminal --hold -e '/home/user/edit_rcS.bash'\n\
+Icon=/home/user/qgroundcontrol/qgroundcontrol.png\n\
+Terminal=false\n\
+Type=Application\n\
+Categories=Utility;Application;\n\
+StartupWMClass=RemoteQGroundControl" > /home/user/Desktop/remote_qgroundcontrol.desktop && \
+    chmod +x /home/user/Desktop/remote_qgroundcontrol.desktop && \
+    chown user:user /home/user/Desktop/remote_qgroundcontrol.desktop
 
-ENTRYPOINT ["/ros_entrypoint.sh"]
-CMD ["/start_vnc_novnc.sh", "bash"]
+USER user
+
+# Точка входа - запускаем скрипт VNC
+ENTRYPOINT ["/start_vnc_novnc.sh"]
