@@ -19,6 +19,10 @@ docker run -it --rm -d -p 6080:6080 -p 5900:5900 --security-opt seccomp=unconfin
 ```bash
 docker run -it --rm -d -p 6080:6080 -p 5900:5900 --security-opt seccomp=unconfined --shm-size=2g  -m 4g --memory-swap=4g  --cpus=2.0 --gpus all --name sverk-docker-container sverk-docker:v1.0
 ```
+Запуск контейнера тестовая вариация 2
+```bash
+docker run -it --rm -d -p 6080:6080 -p 5900:5900 --security-opt seccomp=unconfined --shm-size=2g --name sverk-docker-container sverk-docker:v1.0
+```
 Запуск симулятора
 ```bash
 make px4_sitl gz_x500
@@ -48,8 +52,10 @@ ros2 run px4_ros_com offboard_control
 ./home/user/edit_rcS.bash
 ```  
 ### Ссылка для подключения к сборке - http://localhost:6080/vnc.html  
-
+___
 ## Отладка
 ```bash
 sudo apt install ros-humble-ros-gz
+gz topic -l # показывает топики gazebo
 ```
+https://discuss.px4.io/t/need-help-with-integrating-camera-to-px4-gazebo-simulation/45711

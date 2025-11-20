@@ -169,9 +169,10 @@ RUN wget https://raw.githubusercontent.com/mavlink/qgroundcontrol/master/resourc
     convert /home/user/qgroundcontrol.ico -resize 256x256 /home/user/qgroundcontrol/qgroundcontrol.png && \
     chown user:user /home/user/qgroundcontrol.*
 
-# Создаем ярлык для запуска НА РАБОЧЕМ СТОЛЕ (важное исправление)
+# Создаем ярлык для запуска НА РАБОЧЕМ СТОЛЕ
 RUN mkdir -p /home/user/Desktop/ && \
     echo "[Desktop Entry]\n\
+Version=1.0\n\
 Name=QGroundControl\n\
 Comment=Ground Control Station for Drones\n\
 Exec=/home/user/qgroundcontrol/AppRun\n\
@@ -183,7 +184,7 @@ StartupWMClass=QGroundControl" > /home/user/Desktop/qgroundcontrol.desktop && \
     chmod +x /home/user/Desktop/qgroundcontrol.desktop && \
     chown user:user /home/user/Desktop/qgroundcontrol.desktop
 
-# Создаем ярлык для меню приложений (опционально)
+# Создаем ярлык для меню приложений
 RUN mkdir -p /home/user/.local/share/applications/ && \
     cp /home/user/Desktop/qgroundcontrol.desktop /home/user/.local/share/applications/ && \
     chown user:user /home/user/.local/share/applications/qgroundcontrol.desktop
@@ -191,6 +192,7 @@ RUN mkdir -p /home/user/.local/share/applications/ && \
 ### DISPLAY
 # Возвращаемся к root для настройки сервисов
 USER root
+RUN apt-get update && apt-get remove -y xfce4-power-manager-plugins xfce4-power-manager
 
 # Клонируем и настраиваем noVNC для доступа через браузер
 RUN apt-get update && apt-get install -y \
@@ -267,7 +269,8 @@ RUN apt-get update && apt-get install -y dos2unix && \
 
 RUN mkdir -p /home/user/Desktop/ && \
     echo "[Desktop Entry]\n\
-Name=Remote QgroundControl\n\
+Version=1.0\n\
+Name=Remote QGroundControl\n\
 Comment=Configure Remote QGroundControl connection\n\
 Exec=xfce4-terminal --hold -e '/home/user/edit_rcS.bash'\n\
 Icon=/home/user/qgroundcontrol/qgroundcontrol.png\n\
