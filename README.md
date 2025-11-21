@@ -23,6 +23,10 @@ docker run -it --rm -d -p 6080:6080 -p 5900:5900 --security-opt seccomp=unconfin
 ```bash
 docker run -it --rm -d -p 6080:6080 -p 5900:5900 --security-opt seccomp=unconfined --shm-size=2g --name sverk-docker-container sverk-docker:v1.0
 ```
+Логин и пароль
+```bash
+user:password
+```
 Запуск симулятора
 ```bash
 make px4_sitl gz_x500
@@ -52,6 +56,26 @@ ros2 run px4_ros_com offboard_control
 ./home/user/edit_rcS.bash
 ```  
 ### Ссылка для подключения к сборке - http://localhost:6080/vnc.html  
+___
+## Поднятие камеры
+Для работы с камерой необходимы запустить симуляцию с камерой
+```bash
+make px4_sitl gz_x500_mono_cam_down_aruco
+```
+И запустить проброс изображения из Gazebo в Ros
+```bash
+ros2 run ros_gz_bridge parameter_bridge /world/aruco/model/x500_mono_cam_down_0/link/camera_link/sensor/imager/image@sensor_msgs/msg/Image@gz.msgs.Image
+```
+Команда может варьироваться от вашего имени топика со стороны Gazebo. Для выставления правильного сверьтесь
+```bash
+gz topic -l | grep image
+```
+Проверить ролучение изображения можно через Rviz2 или rqt_image_view 
+```bash
+rviz2 
+# или
+ros2 run rqt_image_view rqt_image_view
+```
 ___
 ## Отладка
 ```bash

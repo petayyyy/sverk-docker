@@ -112,10 +112,19 @@ RUN git clone https://github.com/PX4/PX4-Autopilot.git --recursive && \
     git checkout v1.16.0 && \
     export USER=user && \
     export HOME=/home/user && \ 
-    bash ./Tools/setup/ubuntu.sh && \
+    bash ./Tools/setup/ubuntu.sh
+
+USER root
+RUN apt remove gz-harmonic -y && \
+    apt install aptitude -y && \
+    apt-get update && \
+    aptitude install gazebo libgazebo11 libgazebo-dev -y
+USER user    
+
+RUN cd PX4-Autopilot && \
     git submodule sync --recursive && \
     git submodule update --init --recursive && \
-    make px4_sitl -j$(nproc)
+    make px4_sitl gazebo-classic -j$(nproc)
 
 # Собираем Micro XRCE-DDS Agent
 RUN git clone -b v2.4.3 https://github.com/eProsima/Micro-XRCE-DDS-Agent.git && \
