@@ -174,31 +174,6 @@ RUN wget https://d176tv9ibo4jno.cloudfront.net/latest/QGroundControl-x86_64.AppI
     rm QGroundControl.AppImage && \
     chown -R user:user /home/user/qgroundcontrol
 
-# Скачиваем иконку для QGroundControl
-RUN wget https://raw.githubusercontent.com/mavlink/qgroundcontrol/master/resources/icons/qgroundcontrol.ico -O /home/user/qgroundcontrol.ico && \
-    convert /home/user/qgroundcontrol.ico -resize 256x256 /home/user/qgroundcontrol/qgroundcontrol.png && \
-    chown user:user /home/user/qgroundcontrol.*
-
-# Создаем ярлык для запуска НА РАБОЧЕМ СТОЛЕ
-RUN mkdir -p /home/user/Desktop/ && \
-    echo "[Desktop Entry]\n\
-Version=1.0\n\
-Name=QGroundControl\n\
-Comment=Ground Control Station for Drones\n\
-Exec=/home/user/qgroundcontrol/AppRun\n\
-Icon=/home/user/qgroundcontrol/qgroundcontrol.png\n\
-Terminal=false\n\
-Type=Application\n\
-Categories=Utility;Application;\n\
-StartupWMClass=QGroundControl" > /home/user/Desktop/qgroundcontrol.desktop && \
-    chmod +x /home/user/Desktop/qgroundcontrol.desktop && \
-    chown user:user /home/user/Desktop/qgroundcontrol.desktop
-
-# Создаем ярлык для меню приложений
-RUN mkdir -p /home/user/.local/share/applications/ && \
-    cp /home/user/Desktop/qgroundcontrol.desktop /home/user/.local/share/applications/ && \
-    chown user:user /home/user/.local/share/applications/qgroundcontrol.desktop
-
 ### DISPLAY
 # Возвращаемся к root для настройки сервисов
 USER root
@@ -213,7 +188,9 @@ RUN apt-get update && apt-get install -y \
 
 # Создаем папку для изображений и копируем обои
 RUN mkdir -p /home/user/images/
-COPY /images/photo_2025-11-06_16-22-49.jpg /home/user/images/wallpaper.jpg
+COPY /images/wallpaper_sverk.jpg /home/user/images/wallpaper.jpg
+COPY /images/qgroundcontrol.png /home/user/images/qgroundcontrol.png
+COPY /images/qgroundcontrol_remote.png /home/user/images/qgroundcontrol_remote.png
 
 # Настраиваем обои рабочего стола для Xfce
 RUN mkdir -p /home/user/.config/xfce4/xfconf/xfce-perchannel-xml/ && \
@@ -235,7 +212,9 @@ RUN mkdir -p /home/user/.config/xfce4/xfconf/xfce-perchannel-xml/ && \
 # Создаем скрипт для запуска VNC и noVNC
 RUN echo '#!/bin/bash\n\
 # Запускаем виртуальный дисплей\n\
-Xvfb :99 -screen 0 1280x720x24 &\n\
+Xvfb :99 -screen 0 1600x900x24 &\n\
+# Xvfb :99 -screen 0 1920x1080x24 &\n\
+# Xvfb :99 -screen 0 1280x720x24 &\n\
 export DISPLAY=:99\n\
 # Ожидаем запуска X сервера\n\
 sleep 2\n\
@@ -277,21 +256,15 @@ RUN apt-get update && apt-get install -y dos2unix && \
     chmod +x /home/user/edit_rcS.bash && \
     chown user:user /home/user/edit_rcS.bash
 
-RUN mkdir -p /home/user/Desktop/ && \
-    echo "[Desktop Entry]\n\
-Version=1.0\n\
-Name=Remote QGroundControl\n\
-Comment=Configure Remote QGroundControl connection\n\
-Exec=xfce4-terminal --hold -e '/home/user/edit_rcS.bash'\n\
-Icon=/home/user/qgroundcontrol/qgroundcontrol.png\n\
-Terminal=false\n\
-Type=Application\n\
-Categories=Utility;Application;\n\
-StartupWMClass=RemoteQGroundControl" > /home/user/Desktop/remote_qgroundcontrol.desktop && \
-    chmod +x /home/user/Desktop/remote_qgroundcontrol.desktop && \
-    chown user:user /home/user/Desktop/remote_qgroundcontrol.desktop
+# Создание .desktop файла
+COPY scripts/create_remoteQC.sh /home/user/create_remoteQC.sh
+COPY scripts/create_QC.sh /home/user/create_QC.sh
+RUN /home/user/create_remoteQC.sh && \
+    rm -f /home/user/create_remoteQC.sh
+RUN /home/user/create_QC.sh && \
+    rm -f /home/user/create_QC.sh
 
+RUN systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
 USER user
-
 # Точка входа - запускаем скрипт VNC
 ENTRYPOINT ["/start_vnc_novnc.sh"]
